@@ -1,0 +1,131 @@
+import io
+from PyQt5.QtGui import QIcon, QPixmap
+import sqlite3
+import math
+import sys
+from PyQt5 import uic
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QDialog
+
+
+class Calc(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.wind = uic.loadUi('калькулятор.ui', self)
+        self.con = sqlite3.connect("calcul0.db")
+        self.cur = self.con.cursor()
+        self.expression.clear()
+        self.count.clear()
+        self.btn0.clicked.connect(self.numb)
+        self.cl_hist.clicked.connect(self.del_hist)
+        self.cl_hist.setIcon(QIcon('clear.png'))
+        self.btn1.clicked.connect(self.numb)
+        self.btn2.clicked.connect(self.numb)
+        self.btn3.clicked.connect(self.numb)
+        self.btn4.clicked.connect(self.numb)
+        self.btn5.clicked.connect(self.numb)
+        self.btn6.clicked.connect(self.numb)
+        self.btn7.clicked.connect(self.numb)
+        self.btn8.clicked.connect(self.numb)
+        self.btn9.clicked.connect(self.numb)
+        self.btndot.clicked.connect(self.numb)
+        self.btn_division.clicked.connect(self.signs)
+        self.btn_exp.clicked.connect(self.exp)
+        self.btn_minus.clicked.connect(self.signs)
+        self.btn_mult.clicked.connect(self.signs)
+        self.btn_plus.clicked.connect(self.signs)
+        self.btn_op_brac.clicked.connect(self.brac)
+        self.btn_cl_brac.clicked.connect(self.brac)
+        self.btn_clear.clicked.connect(self.cle)
+        self.btn_sign_change.clicked.connect(self.sign_change)
+        self.btn_eq.clicked.connect(self.equal)
+        self.btn_factorial.clicked.connect(self.fact)
+        self.btn_sqrt.clicked.connect(self.sqr)
+        self.history.clicked.connect(self.hist)
+        self.wind_2 = QWidget
+        self.wind.show()
+        self.resultat = ' '
+
+    def hist(self):
+        self.wind_2 = uic.loadUi('2.ui', self)
+        self.hist_1(len(self.resultat), 1, self.wind_2)
+        self.hist_1.setEditTriggers(QWidget.QAbstractItemView.NoEditTriggers)
+        self.cur.execute('''SELECT * FROM results''')
+        self.resultat = self.cur.fetchall()
+        for i in range(len(self.resultat)):
+            self.hist_1.setItem(i, QWidget.QTableWidgetItem(self.resultat[i]))
+        self.wind_2.show()
+
+
+    def numb(self):
+        self.expression.setText(self.expression.text() + self.sender().text())
+        self.count.setText(self.count.text() + self.sender().text())
+
+    def signs(self):
+        self.count.setText(self.count.text() + self.sender().text())
+        self.expression.clear()
+
+    def sign_change(self):
+        if self.expression.text() == '+':
+            self.expression.setText('-')
+            self.count.setText(self.count.text() + self.expression.text())
+        elif self.expression.text() == '-':
+            self.expression.setText('+')
+        if self.expression.text() == '':
+            self.expression.setText(self.expression.text() + '-')
+            self.count.setText(self.count.text() + self.expression.text())
+
+    def exp(self):
+        self.count.setText(self.count.text() + '**')
+
+    def cle(self):
+        self.expression.clear()
+        self.count.clear()
+
+    def brac(self):
+        self.count.setText(self.count.text() + self.sender().text())
+
+    def fact(self):
+        self.expression.setText(self.expression.text() + '!')
+        vrznach = self.expression.text()
+        vrznach = vrznach[:-1]
+        vrznach = int(vrznach)
+        vrznach = math.factorial(vrznach)
+        dl = len(self.expression.text())
+        self.count.setText(self.count.text()[:-(dl - 1)])
+        self.count.setText(self.count.text() + str(vrznach))
+
+    def sqr(self):
+        try:
+            self.expression.setText(self.expression.text() + 'sqrt')
+            vrznach = self.expression.text()
+            vrznach = vrznach[:-4]
+            vrznach = int(vrznach)
+            vrznach = math.sqrt(vrznach)
+            dl = len(self.expression.text())
+            self.count.setText(self.count.text()[:-(dl - 4)])
+            self.count.setText(self.count.text() + str(vrznach))
+        except:
+            self.expression.setText('Ошибка')
+            self.count.clear()
+
+    def del_hist(self):
+        self.cur.execute('''DELETE FROM results *''').fetchall()
+
+    def equal(self):
+        res = self.count.text()
+        otvet = eval(res)
+        self.expression.setText(str(otvet))
+        self.cur.execute('''INSERT INTO results(hist) VALUES(?)''', (str(otvet))).fetchall()
+        self.count.clear()
+
+
+def except_hook(cls, exception, traceback):
+    sys.__excepthook__(cls, exception, traceback)
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = Calc()
+    ex.show()
+    sys.excepthook = except_hook
+    sys.exit(app.exec_())
