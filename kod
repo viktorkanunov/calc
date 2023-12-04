@@ -4,20 +4,21 @@ import sqlite3
 import math
 import sys
 from PyQt5 import uic
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QDialog
+from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QTableWidgetItem
 
 
 class Calc(QMainWindow):
     def __init__(self):
         super().__init__()
         self.wind = uic.loadUi('калькулятор.ui', self)
-        self.con = sqlite3.connect("calcul0.db")
+        self.con = sqlite3.connect("calcul.db")
         self.cur = self.con.cursor()
         self.expression.clear()
         self.count.clear()
         self.btn0.clicked.connect(self.numb)
         self.cl_hist.clicked.connect(self.del_hist)
         self.cl_hist.setIcon(QIcon('clear.png'))
+        self.cl_hist.setText('Очистить историю')
         self.btn1.clicked.connect(self.numb)
         self.btn2.clicked.connect(self.numb)
         self.btn3.clicked.connect(self.numb)
@@ -41,20 +42,33 @@ class Calc(QMainWindow):
         self.btn_factorial.clicked.connect(self.fact)
         self.btn_sqrt.clicked.connect(self.sqr)
         self.history.clicked.connect(self.hist)
+        self.history.setText('показать историю')
         self.wind_2 = QWidget
         self.wind.show()
         self.resultat = ' '
 
     def hist(self):
+        self.wind.hide()
         self.wind_2 = uic.loadUi('2.ui', self)
-        self.hist_1(len(self.resultat), 1, self.wind_2)
-        self.hist_1.setEditTriggers(QWidget.QAbstractItemView.NoEditTriggers)
-        self.cur.execute('''SELECT * FROM results''')
-        self.resultat = self.cur.fetchall()
-        for i in range(len(self.resultat)):
-            self.hist_1.setItem(i, QWidget.QTableWidgetItem(self.resultat[i]))
-        self.wind_2.show()
+        self.ret.setText('вернуться')
+        self.ret.clicked.connect(self.reter)
+        result = self.cur.execute('''SELECT * FROM results''').fetchall()
+        self.hist_1.setRowCount(len(result))
+        if not result:
+            self.statusBar().showMessage('Ничего не нашлось')
+            return
+        self.hist_1.setColumnCount(len(result[0]))
+        for i, el in enumerate(result):
+            for j, ot in enumerate(el):
+                self.hist_1.setItem(i, j, QTableWidgetItem(str(ot)))
+        self.wind.hide()
+        self. wind_2.show()
 
+
+
+    def reter(self):
+        self.wind_2.hide()
+        self.wind.show()
 
     def numb(self):
         self.expression.setText(self.expression.text() + self.sender().text())
@@ -115,8 +129,9 @@ class Calc(QMainWindow):
         res = self.count.text()
         otvet = eval(res)
         self.expression.setText(str(otvet))
-        self.cur.execute('''INSERT INTO results(hist) VALUES(?)''', (str(otvet))).fetchall()
         self.count.clear()
+        self.cur.execute('''INSERT INTO results(hist) VALUES(?)''', (str(otvet))).fetchall()
+        self.con.commit()
 
 
 def except_hook(cls, exception, traceback):
